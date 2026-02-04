@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Type | Cyberpunk Typing Shooter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="game-wrapper">
+        <canvas id="game-canvas"></canvas>
+
+        <!-- UI Overlay -->
+        <div id="ui-layer">
+            <div class="top-bar">
+                <div class="stat-box">
+                    <span class="label">SCORE</span>
+                    <span id="score-display">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">WAVE</span>
+                    <span id="wave-display">1</span>
+                </div>
+            </div>
+
+            <div class="bottom-bar">
+                <div class="health-container">
+                    <div class="health-label">HULL INTEGRITY</div>
+                    <div class="health-bar-bg">
+                        <div id="health-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reward-message" class="reward-overlay"></div>
+        </div>
+
+        <!-- Screens -->
+        <div id="start-screen" class="screen active">
+            <h1 class="main-title">NEON<span class="flicker">TYPE</span></h1>
+            <p class="tagline">DEFEND THE SYSTEM</p>
+            <button id="start-btn" class="ui-btn">INITIATE SEQUENCE</button>
+            <div class="controls-hint">
+                <p>TYPE WORDS TO SHOOT</p>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="screen">
+            <h1 class="danger-text">MISSION REPORT</h1>
+            <div id="new-record-msg" class="new-record hidden">NEW PERSONAL BEST!</div>
+
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <span class="label">FINAL SCORE</span>
+                    <span id="summary-score" class="val">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">WAVE REACHED</span>
+                    <span id="summary-wave" class="val">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">ACCURACY</span>
+                    <span id="summary-accuracy" class="val">0%</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">BEST STREAK</span>
+                    <span id="summary-streak" class="val">0</span>
+                </div>
+            </div>
+
+            <div class="graph-container">
+                <p class="label">PERFORMANCE HISTORY</p>
+                <canvas id="perf-graph"></canvas>
+            </div>
+
+            <div class="buttons-row">
+                <button id="restart-btn" class="ui-btn">REBOOT SYSTEM</button>
+                <button id="menu-btn" class="ui-btn secondary">MAIN MENU</button>
+            </div>
+        </div>
+
+        <div id="pause-screen" class="screen">
+            <h1 class="main-title">SYSTEM <span class="flicker">HALTED</span></h1>
+            <p class="tagline">AWAITING INPUT</p>
+            <button id="resume-btn" class="ui-btn">RESUME SEQUENCE</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
