@@ -158,17 +158,46 @@ canvas {
 
 .ui-btn {
     background: transparent;
-    border: 2px solid var(--neon-blue);
-    color: white;
-    font-family: var(--font-ui);
-    font-size: 1.2rem;
-    padding: 1rem 3rem;
+    border: 2px solid #00f3ff;
+    color: #00f3ff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.5rem;
+    padding: 15px 40px;
     cursor: pointer;
-    transition: all 0.3s;
-    text-transform: uppercase;
-    letter-spacing: 3px;
+    text-shadow: 0 0 10px #00f3ff;
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+    transition: all 0.2s;
+    margin-top: 20px;
     position: relative;
     overflow: hidden;
+}
+
+.diff-buttons {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.diff-btn {
+    font-size: 1rem;
+    padding: 10px 20px;
+    opacity: 0.5;
+    margin-top: 10px;
+}
+
+.diff-btn.active,
+.diff-btn:hover {
+    opacity: 1;
+    background: rgba(0, 243, 255, 0.1);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+}
+
+.difficulty-select p {
+    color: #fff;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    opacity: 0.8;
 }
 
 .ui-btn::before {

@@ -32,16 +32,28 @@ function project(x, y) {
 }
 
 // Word Dictionary
-const WORDS = [
+// Word Dictionary
+const WORDS_EASY = [
     "VOID", "CORE", "NEON", "GLOW", "FLUX", "GRID", "DATA", "CODE",
     "HACK", "BIOS", "LINK", "NODE", "SYNC", "WAVE", "BEAM", "NULL",
     "ZERO", "BYTE", "MEGA", "GIGA", "TERA", "WARP", "STAR", "MOON",
-    "GATE", "LOCK", "KEY", "PATH", "ROOT", "BOOT", "LOAD", "SAVE",
-    "ECHO", "PING", "PONG", "HOST", "USER", "MAIN", "EXIT", "QUIT",
+    "GATE", "LOCK", "KEY", "PATH", "ROOT", "BOOT", "LOAD", "SAVE"
+];
+
+const WORDS_MEDIUM = [
     "SYSTEM", "MATRIX", "VECTOR", "PIXEL", "SPRITE", "RENDER", "SHADER",
     "BUFFER", "MEMORY", "KERNEL", "SERVER", "CLIENT", "SOCKET", "PACKET",
-    "ROUTER", "SWITCH", "ACCESS", "DENIED", "UPLINK", "FIREWALL", "TROJAN",
-    "VIRUS", "WORM", "LOGIC", "POWER", "ENERGY", "PLASMA", "LASER", "ORBIT"
+    "ROUTER", "SWITCH", "ACCESS", "DENIED", "UPLINK", "TROJAN", "BINARY",
+    "DRIVER", "LATENCY", "BANDWIDTH", "PROTOCOL", "NETWORK", "VIRTUAL",
+    "DIGITAL", "ANALOG", "CIRCUIT", "SILICON", "OPTICAL", "QUANTUM"
+];
+
+const WORDS_HARD = [
+    "ALGORITHM", "ENCRYPTION", "FIREWALL", "PROCESSOR", "INTERFACE",
+    "COMPILER", "DEBUGGER", "DATABASE", "MAINFRAME", "CYBERPUNK",
+    "ASSEMBLY", "INTERRUPT", "REGISTRY", "ETHERNET", "KERNELPANIC",
+    "OVERCLOCK", "BLUEPRINT", "CRYPTOGRAPHY", "HEURISTIC", "ITERATION",
+    "RECURSION", "TELEMETRY", "SUBROUTINE", "THROUGHPUT", "BLOCKCHAIN"
 ];
 
 // Audio Context (Synthesized Sounds)
@@ -81,6 +93,9 @@ const noiseBuffer = createNoiseBuffer();
 // Load Assets
 const explosionImg = new Image();
 explosionImg.src = 'Explosion.png';
+
+const playerImg = new Image();
+playerImg.src = 'spiked ship 3. small.blue_.PNG';
 
 function sfxWarExplosion() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -144,25 +159,16 @@ class Player {
         ctx.rotate(this.angle);
         ctx.scale(s, s);
 
-        // 3D Ship Effect (Stacked layers for thickness)
+        // Draw Ship Image
+        const shipW = 80;
+        const shipH = 80;
+
         ctx.shadowBlur = 20;
         ctx.shadowColor = '#00f3ff';
 
-        // Base/Engine Glow
-        ctx.fillStyle = '#ff00ff';
-        ctx.fillRect(-10, 20, 20, 10); // Engine block
-
-        // Hull Layers
-        ctx.fillStyle = '#005577';
-        ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(15, 20); ctx.lineTo(-15, 20); ctx.fill();
-
-        ctx.translate(0, -2); // Layer up
-        ctx.fillStyle = '#0088aa';
-        ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(15, 20); ctx.lineTo(-15, 20); ctx.fill();
-
-        ctx.translate(0, -2); // Top Layer
-        ctx.fillStyle = '#00f3ff';
-        ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(15, 20); ctx.lineTo(0, 10); ctx.lineTo(-15, 20); ctx.fill();
+        // Draw image centered at (0,0) which is now the player's 3D projected position
+        // Assuming image faces UP by default. If it faces RIGHT, add + Math.PI/2 to rotation
+        ctx.drawImage(playerImg, -shipW / 2, -shipH / 2, shipW, shipH);
 
         ctx.restore();
     }
@@ -507,6 +513,7 @@ class SpriteExplosion {
 const Game = {
     active: false,
     paused: false,
+    currentDifficulty: 'easy', // Default
     score: 0,
     health: 100,
     wave: 1,
@@ -664,7 +671,12 @@ const Game = {
     },
 
     spawnEnemy() {
-        const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+        let list;
+        if (this.currentDifficulty === 'hard') list = WORDS_HARD;
+        else if (this.currentDifficulty === 'medium') list = WORDS_MEDIUM;
+        else list = WORDS_EASY;
+
+        const word = list[Math.floor(Math.random() * list.length)];
         this.enemies.push(new Enemy(word));
     },
 
@@ -944,4 +956,16 @@ document.getElementById('resume-btn').addEventListener('click', () => Game.toggl
 document.getElementById('menu-btn').addEventListener('click', () => {
     document.getElementById('game-over-screen').classList.remove('active');
     document.getElementById('start-screen').classList.add('active');
+});
+
+// Difficulty Selection
+document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        // Remove active class from all
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+        // Add to clicked
+        e.target.classList.add('active');
+        // Set game difficulty
+        Game.currentDifficulty = e.target.getAttribute('data-diff');
+    });
 });
