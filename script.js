@@ -78,6 +78,10 @@ function createNoiseBuffer() {
 }
 const noiseBuffer = createNoiseBuffer();
 
+// Load Assets
+const explosionImg = new Image();
+explosionImg.src = 'Explosion.png';
+
 function sfxWarExplosion() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const noise = audioCtx.createBufferSource();
@@ -451,6 +455,54 @@ class TextExplosion {
     }
 }
 
+class SpriteExplosion {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.frame = 0;
+        this.totalFrames = 12;
+        this.frameSpeed = 0.5; // Controls animation speed
+        this.currentFrame = 0;
+        this.active = true;
+    }
+
+    update() {
+        this.currentFrame += this.frameSpeed;
+        this.frame = Math.floor(this.currentFrame);
+        if (this.frame >= this.totalFrames) {
+            this.active = false;
+        }
+    }
+
+    draw(ctx) {
+        if (!this.active) return;
+
+        ctx.save();
+        const p = project(this.x, this.y);
+        const s = p.scale * 4; // Scale up the explosion
+
+        // Calculate frame position in sprite sheet (12 frames horizontal)
+        const frameWidth = explosionImg.width / 12;
+        const frameHeight = explosionImg.height;
+
+        ctx.translate(p.x, p.y);
+        ctx.scale(s, s);
+
+        // Draw the specific frame centered
+        ctx.drawImage(
+            explosionImg,
+            this.frame * frameWidth, 0, frameWidth, frameHeight,
+            -frameWidth / 2, -frameHeight / 2, frameWidth, frameHeight
+        );
+
+        ctx.restore();
+    }
+
+    isDead() {
+        return !this.active;
+    }
+}
+
 // Game Manager
 const Game = {
     active: false,
@@ -692,6 +744,7 @@ const Game = {
         // Add special destruction effects
         this.effects.push(new Shockwave(enemy.x, enemy.y));
         this.effects.push(new TextExplosion(enemy.x, enemy.y, enemy.word));
+        this.effects.push(new SpriteExplosion(enemy.x, enemy.y));
 
         // Screen Shake
         this.shakeTimer = 15;
