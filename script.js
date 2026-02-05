@@ -17,21 +17,57 @@ window.addEventListener('resize', resize);
 resize();
 
 // 3D Perspective Helper
-// Maps 2D logic (x,y) to 3D projected (sx, sy, scale)
-// Logic: Y=0 is deep in background (Far), Y=Height is close to camera (Near)
 function project(x, y) {
     const depth = (y / height); // 0.0 (Far) to 1.0 (Near)
-    // Increased min scale from 0.3 to 0.6 for better readability
-    const scale = 0.6 + 0.4 * (depth * depth);
-
-    // Pull X towards center based on Z-depth (creates trapezoid/perspective look)
+    const scale = 0.5 + 0.5 * (depth * depth); // More dramatic scale
     const sx = cx + (x - cx) * scale;
     const sy = y;
-
     return { x: sx, y: sy, scale: scale };
 }
 
-// Word Dictionary
+// Background Grid Effect
+class BackgroundGrid {
+    constructor() {
+        this.offsetY = 0;
+        this.speed = 2;
+    }
+
+    update() {
+        this.offsetY = (this.offsetY + this.speed) % 80;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(76, 224, 179, 0.15)'; // Tac Green
+        ctx.lineWidth = 1;
+
+        // Vertical lines (Perspective)
+        for (let i = -10; i <= 10; i++) {
+            const x = cx + i * 100;
+            ctx.beginPath();
+            ctx.moveTo(cx + (x - cx) * 0.1, 0); // Converge at top
+            ctx.lineTo(x, height);
+            ctx.stroke();
+        }
+
+        // Horizontal lines (Moving forward)
+        for (let i = 0; i < 20; i++) {
+            const y = (this.offsetY + i * 80) % height;
+            // Only draw if in lower half to simulate ground plane perception
+            if (y > height * 0.2) {
+                const alpha = (y / height) * 0.3;
+                ctx.strokeStyle = `rgba(76, 224, 179, ${alpha})`;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+}
+const bgGrid = new BackgroundGrid();
+
 // Word Dictionary
 const WORDS_EASY = [
     "VOID", "CORE", "NEON", "GLOW", "FLUX", "GRID", "DATA", "CODE",
@@ -133,24 +169,18 @@ class Player {
     }
 
     update(targetX, targetY) {
-        // Rotate towards target if one exists
         if (targetX !== null) {
             this.targetAngle = Math.atan2(targetY - this.y, targetX - this.x) + Math.PI / 2;
         } else {
             this.targetAngle = 0;
         }
-
-        // Smooth rotation
         let diff = this.targetAngle - this.angle;
-        // Normalize angle
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
-
         this.angle += diff * 0.15;
     }
 
     draw(ctx) {
-        // Player is always near (scale ~1)
         const p = project(this.x, this.y);
         const s = p.scale;
 
@@ -159,16 +189,18 @@ class Player {
         ctx.rotate(this.angle);
         ctx.scale(s, s);
 
-        // Draw Ship Image
-        const shipW = 80;
-        const shipH = 80;
+        const shipW = 100;
+        const shipH = 100;
 
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#00f3ff';
-
-        // Draw image centered at (0,0) which is now the player's 3D projected position
-        // Assuming image faces UP by default. If it faces RIGHT, add + Math.PI/2 to rotation
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = '#ffd700'; // Gold glow for player
         ctx.drawImage(playerImg, -shipW / 2, -shipH / 2, shipW, shipH);
+
+        // Engine flame
+        ctx.fillStyle = `rgba(0, 240, 255, ${Math.random() * 0.5 + 0.5})`;
+        ctx.beginPath();
+        ctx.arc(0, shipH / 2 - 10, 10 + Math.random() * 5, 0, Math.PI * 2);
+        ctx.fill();
 
         ctx.restore();
     }
@@ -178,18 +210,22 @@ class Enemy {
     constructor(word) {
         this.word = word;
         this.matchedIndex = 0;
-        this.x = Math.random() * (width - 100) + 50;
-        this.y = -50;
-        this.speed = Math.random() * 0.5 + 0.5; // Base speed
+        this.x = Math.random() * (width - 200) + 100;
+        this.y = -100;
+        this.speed = Math.random() * 0.8 + 0.5;
         this.isLocked = false;
         this.markedForDeletion = false;
+        this.rotation = 0;
+        this.pulse = 0;
     }
 
     update(difficultyMultiplier) {
         this.y += this.speed * difficultyMultiplier;
+        this.rotation += 0.02;
+        this.pulse += 0.1;
         if (this.y > height) {
             this.markedForDeletion = true;
-            return 'damage'; // Return damage event
+            return 'damage';
         }
         return null;
     }
@@ -202,64 +238,64 @@ class Enemy {
         ctx.translate(p.x, p.y);
         ctx.scale(s, s);
 
-        // 3D Enemy Block
-        const col = this.isLocked ? '#ff0055' : '#ffffff';
-        const shadowCol = this.isLocked ? '#ff0055' : 'rgba(0,0,0,0.5)';
+        const isLocked = this.isLocked;
+        const baseColor = isLocked ? '#ff0044' : '#ffffff'; // Red if locked, White otherwise
 
-        // Shadow/Depth block
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        ctx.fillRect(-20, -10, 40, 40); // Drop shadow behind
-
-        // Main Cube
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 2;
-        ctx.fillStyle = this.isLocked ? 'rgba(255, 0, 85, 0.2)' : 'rgba(255, 255, 255, 0.05)';
-
-        // Fake 3D wireframe box
+        // Enemy Vessel Design - "Tactical Drone"
+        // 1. Core
+        ctx.shadowBlur = isLocked ? 20 : 0;
+        ctx.shadowColor = baseColor;
+        ctx.fillStyle = '#111';
         ctx.beginPath();
-        ctx.rect(-15, -15, 30, 30); // Front face
-        ctx.stroke();
+        ctx.arc(0, 0, 20, 0, Math.PI * 2);
         ctx.fill();
 
-        // Connecting lines to "back" (smaller rect)
+        // 2. Rotating Rings
+        ctx.strokeStyle = baseColor;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(-15, -15); ctx.lineTo(-10, -20);
-        ctx.moveTo(15, -15); ctx.lineTo(10, -20);
-        ctx.moveTo(15, 15); ctx.lineTo(10, 10);
-        ctx.moveTo(-15, 15); ctx.lineTo(-10, 10);
+        ctx.ellipse(0, 0, 30, 10, this.rotation, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Back face
-        ctx.strokeRect(-10, -20, 20, 30);
+        ctx.strokeStyle = isLocked ? '#ffbd00' : '#888';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 30, 10, -this.rotation, 0, Math.PI * 2);
+        ctx.stroke();
 
-        // Word render (Floating above)
-        // Increased font size for visibility
-        ctx.font = 'bold 32px "Share Tech Mono"';
+        // 3. Central Eye
+        const pulseSize = 10 + Math.sin(this.pulse) * 2;
+        ctx.fillStyle = isLocked ? '#ff3333' : '#4ce0b3'; /* Red vs Teal */
+        ctx.beginPath();
+        ctx.arc(0, 0, pulseSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Word Label (High contrast plate)
+        ctx.font = '900 36px "Share Tech Mono"';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-
-        // Add a dark background plate behind text for contrast
         const totalW = ctx.measureText(this.word).width;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(-totalW / 2 - 5, -55, totalW + 10, 30);
 
-        let labelY = -40; // Floating high above
+        // Label Background
+        ctx.fillStyle = 'rgba(10, 20, 30, 0.9)';
+        ctx.strokeStyle = baseColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.rect(-totalW / 2 - 10, -70, totalW + 20, 30); /* Sharp rect */
+        ctx.fill();
+        ctx.stroke();
+
+        let labelY = -50;
         const remaining = this.word.substring(this.matchedIndex);
         const matched = this.word.substring(0, this.matchedIndex);
         const startX = -totalW / 2;
 
-        if (this.isLocked) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#0aff00';
-        }
-
-        // Matched
         if (matched.length > 0) {
-            ctx.fillStyle = '#0aff00';
+            ctx.fillStyle = '#ff9900'; // Tactical Orange for matched
+            ctx.shadowBlur = 0;
             ctx.fillText(matched, startX + ctx.measureText(matched).width / 2, labelY);
         }
-        // Remaining
-        ctx.fillStyle = '#ffffff';
+
+        ctx.fillStyle = '#ffffff'; // White for remaining
         const offset = ctx.measureText(matched).width;
         ctx.fillText(remaining, startX + offset + ctx.measureText(remaining).width / 2, labelY);
 
@@ -272,7 +308,7 @@ class Projectile {
         this.x = x;
         this.y = y;
         this.target = target;
-        this.speed = 12;
+        this.speed = 20; // Faster lasers
         this.active = true;
         this.trail = [];
     }
@@ -283,29 +319,26 @@ class Projectile {
             return;
         }
 
-        // Homing Hysteresis
         const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
         this.x += Math.cos(angle) * this.speed;
         this.y += Math.sin(angle) * this.speed;
 
-        // Trail logic
         this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > 5) this.trail.shift();
+        if (this.trail.length > 8) this.trail.shift();
 
-        // Hit detection
         const dist = Math.hypot(this.x - this.target.x, this.y - this.target.y);
-        if (dist < 20) {
+        if (dist < 30) {
             this.active = false;
             return 'hit';
         }
     }
 
     draw(ctx) {
-        ctx.strokeStyle = '#00f3ff';
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#00f3ff';
+        ctx.strokeStyle = '#fff'; // White Tracer
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'butt';
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = '#fff';
 
         ctx.beginPath();
         for (let i = 0; i < this.trail.length; i++) {
@@ -316,6 +349,12 @@ class Projectile {
         const curr = project(this.x, this.y);
         ctx.lineTo(curr.x, curr.y);
         ctx.stroke();
+
+        // Leading Spark
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(curr.x, curr.y, 4, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 
@@ -323,9 +362,8 @@ class Particle {
     constructor(x, y, type) {
         this.x = x;
         this.y = y;
-        this.type = type; // 'spark', 'fire', 'smoke'
+        this.type = type;
         this.life = 1;
-
         const angle = Math.random() * Math.PI * 2;
 
         if (type === 'spark') {
@@ -335,16 +373,16 @@ class Particle {
             this.color = '#fff';
             this.size = Math.random() * 3 + 1;
         } else if (type === 'fire') {
-            this.vx = Math.cos(angle) * (Math.random() * 4);
-            this.vy = Math.sin(angle) * (Math.random() * 4);
+            this.vx = Math.cos(angle) * (Math.random() * 6);
+            this.vy = Math.sin(angle) * (Math.random() * 6);
             this.decay = Math.random() * 0.04 + 0.01;
-            const hue = Math.random() * 40 + 10; // Orange/Yellow
-            this.color = `hsl(${hue}, 100%, 50%)`;
+            const hue = Math.random() * 40 + 340; // Red/Crimson
+            this.color = `hsl(${hue}, 100%, 60%)`;
             this.size = Math.random() * 20 + 10;
         } else if (type === 'smoke') {
-            this.vx = Math.cos(angle) * (Math.random() * 1);
-            this.vy = Math.sin(angle) * (Math.random() * 1) - 2; // Drift up
-            this.decay = Math.random() * 0.01 + 0.005;
+            this.vx = Math.cos(angle) * 2;
+            this.vy = Math.sin(angle) * 2 - 2;
+            this.decay = 0.02;
             this.color = 'rgba(50, 50, 50, 0.5)';
             this.size = Math.random() * 30 + 10;
         }
@@ -359,7 +397,7 @@ class Particle {
             this.vx *= 0.9;
             this.vy *= 0.9;
         } else {
-            this.size += 0.5; // Expand
+            this.size += 0.5;
             this.vx *= 0.95;
             this.vy *= 0.95;
         }
@@ -367,16 +405,17 @@ class Particle {
 
     draw(ctx) {
         const p = project(this.x, this.y);
-        const s = p.scale * this.size; // Scale particle size too
+        const s = p.scale * this.size;
 
         ctx.save();
         ctx.globalAlpha = Math.max(0, this.life);
         ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, s, 0, Math.PI * 2);
         ctx.fill();
-
         ctx.restore();
     }
 }
@@ -386,9 +425,9 @@ class Shockwave {
         this.x = x;
         this.y = y;
         this.radius = 1;
-        this.maxRadius = 60;
+        this.maxRadius = 80;
         this.alpha = 1;
-        this.speed = 4;
+        this.speed = 5;
     }
 
     update() {
@@ -399,10 +438,14 @@ class Shockwave {
     draw(ctx) {
         if (this.alpha <= 0) return;
         ctx.save();
+        const p = project(this.x, this.y);
+        ctx.translate(p.x, p.y);
+        ctx.scale(1, 0.5); // Perspective oval
+
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(0, 243, 255, ${this.alpha})`;
-        ctx.lineWidth = 4;
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 200, 0, ${this.alpha})`;
+        ctx.lineWidth = 5;
         ctx.stroke();
         ctx.restore();
     }
@@ -642,7 +685,7 @@ const Game = {
         const maxVal = Math.max(...data, 100);
 
         cc.clearRect(0, 0, c.width, c.height);
-        cc.strokeStyle = '#00f3ff';
+        cc.strokeStyle = '#ff5e00';
         cc.lineWidth = 2;
         cc.beginPath();
 
@@ -657,7 +700,7 @@ const Game = {
         // Gradient fill
         cc.lineTo(c.width - pad, c.height - pad);
         cc.lineTo(pad, c.height - pad);
-        cc.fillStyle = 'rgba(0, 243, 255, 0.2)';
+        cc.fillStyle = 'rgba(255, 94, 0, 0.2)';
         cc.fill();
     },
 
@@ -790,7 +833,21 @@ const Game = {
     updateUI() {
         document.getElementById('score-display').innerText = this.score;
         document.getElementById('wave-display').innerText = this.wave;
-        document.getElementById('health-bar-fill').style.width = this.health + '%';
+
+        const bar = document.getElementById('health-bar-fill');
+        bar.style.width = this.health + '%';
+
+        // Dynamic Health Color
+        if (this.health < 30) {
+            bar.style.background = 'linear-gradient(90deg, #ff0044, #ff3333)';
+            bar.style.boxShadow = '0 0 15px rgba(255, 50, 50, 0.5)';
+        } else if (this.health < 60) {
+            bar.style.background = 'linear-gradient(90deg, #b8860b, #ffcc00)';
+            bar.style.boxShadow = '0 0 15px rgba(255, 204, 0, 0.5)';
+        } else {
+            bar.style.background = 'linear-gradient(90deg, #3aa381, #4ce0b3)';
+            bar.style.boxShadow = '0 0 15px rgba(76, 224, 179, 0.4)';
+        }
     },
 
     logic() {
@@ -907,15 +964,6 @@ const Game = {
         // Draw Player Laser Sight (3D)
         if (this.lockedTarget && !this.lockedTarget.markedForDeletion) {
             ctx.beginPath();
-            const pStart = project(this.player.x, this.player.y);
-            const pEnd = project(this.lockedTarget.x, this.lockedTarget.y);
-
-            ctx.moveTo(pStart.x, pStart.y);
-            ctx.lineTo(pEnd.x, pEnd.y);
-            ctx.strokeStyle = 'rgba(0, 243, 255, 0.5)';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([5, 10]);
-            ctx.stroke();
             ctx.setLineDash([]);
         }
 
@@ -930,11 +978,50 @@ const Game = {
 };
 
 function loop() {
-    if (Game.active && !Game.paused) {
-        Game.logic();
-        Game.render();
+    if (!Game.active) return;
+    if (Game.paused) {
+        requestAnimationFrame(loop);
+        return;
     }
-    if (Game.active) requestAnimationFrame(loop);
+
+    // Logic
+    Game.logic();
+
+    // Render
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. Draw Background Grid
+    bgGrid.update();
+    bgGrid.draw(ctx);
+
+    // 2. Game Elements
+    Game.particles.forEach(p => p.draw(ctx));
+    Game.enemies.forEach(e => e.draw(ctx));
+    Game.projectiles.forEach(p => p.draw(ctx));
+    Game.player.draw(ctx);
+    Game.effects.forEach(e => e.draw(ctx));
+
+    // 3. Global Vignette & CRT Scanlines (Subtle Action Mode)
+    ctx.save();
+
+    // Scanlines (Very subtle texture)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+    for (let i = 0; i < height; i += 4) {
+        ctx.fillRect(0, i, width, 2);
+    }
+
+    // Vignette (Corner darkening only - does not obscure text)
+    const maxDim = Math.max(width, height);
+    const grad = ctx.createRadialGradient(cx, cy, maxDim * 0.6, cx, cy, maxDim);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.5)'); // Reduced intensity
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.restore();
+
+    // Loop
+    requestAnimationFrame(loop);
 }
 
 // Input Binding
